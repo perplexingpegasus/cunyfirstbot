@@ -3,6 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
+from getpass import getpass
 import time
 
 
@@ -38,7 +39,7 @@ def get_wait_time():
 
 def get_username_and_password():
     username = input("CUNYfirst username: ")
-    password = input("CUNYfirst password: ")
+    password = getpass("CUNYfirst password: ")
     return username, password
 
 
@@ -48,19 +49,21 @@ wait_time = get_wait_time()
 
 browser = webdriver.Firefox()
 print('\nConnected to Firefox...\n'
-      "\nClosing Firefox will terminate this program, so like don't do that, okay?\n"
-      "\nAlso this would be a good time to tell you that if you entered the wrong login info it's obviously not gonna work.\n")
+      "\nClosing Firefox will terminate this program, so like don't do that, okay?\n")
 
 
 def login(username, password):
 
     browser.get('https://home.cunyfirst.cuny.edu/')
-    username_input = browser.find_element_by_id('cf-login')
-    password_input = browser.find_element_by_id('password')
-    username_input.send_keys(username)
+    time.sleep(3)
+    username_input = browser.find_element_by_id('CUNYfirstUsernameH')
+    password_input = browser.find_element_by_id('CUNYfirstPassword')
+    username_input.clear()
+    username_input.send_keys(username + '@login.cuny.edu')
     password_input.send_keys(password)
-    password_input.submit()
-
+    time.sleep(2)
+    submit = browser.find_element_by_id('submit')
+    submit.click()
 
 
 
@@ -80,10 +83,10 @@ def student_center():
 def start_loop():
     if len(attempts) < 10:
         try:
-            frame = WebDriverWait(browser, 60).until(
+            frame = WebDriverWait(browser, 15).until(
                 EC.presence_of_element_located((By.ID, "ptifrmtgtframe"))
             )
-        except TimeoutException:
+        except (TimeoutException, TypeError):
             attempts.append(1)
             print(reload_text)
             browser.refresh()
@@ -92,8 +95,7 @@ def start_loop():
             browser.switch_to.frame(frame)
             enroll()
     else:
-        for _ in attempts:
-            attempts.remove(_)
+        attempts.clear()
         login(username, password)
         student_center()
         start_loop()
@@ -110,8 +112,25 @@ def enroll():
         start_loop()
     else:
         element.click()
-        check_for_opens()
+        select_semester()
 
+
+def select_semester():
+    try:
+        radio = WebDriverWait(browser, 60).until(
+            EC.presence_of_element_located((By.ID, "SSR_DUMMY_RECV1$sels$1$$0"))
+        )
+        submit = WebDriverWait(browser, 60).until(
+            EC.presence_of_element_located((By.ID, "DERIVED_SSS_SCT_SSR_PB_GO"))
+        )
+    except TimeoutException:
+        print(reload_text)
+        browser.refresh()
+        start_loop()
+    else:
+        radio.click()
+        submit.click()
+        check_for_opens()
 
 
 def check_for_opens():
@@ -204,7 +223,7 @@ try:
     start_loop()
 except WebDriverException as e:
     print(str(e))
-    print('The program stopped because browser was closed or something. Next time stop fucking with it and just let it run, okay?\n')
+    print('The program stopped because browser was closed or something.\n')
     if registrations:
         for class_name in registrations:
             print('You got into these classes...\n')
